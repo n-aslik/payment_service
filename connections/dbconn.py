@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from psycopg2 import pool
 from contextlib import contextmanager
 
+
 pg_pool = pool.ThreadedConnectionPool(1, 50, **configdb())
 
 @contextmanager
