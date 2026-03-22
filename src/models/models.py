@@ -1,16 +1,22 @@
-from pydantic import BaseModel
+from pydantic import BaseModel,Field
 from typing import Optional
+import uuid
 
 
 class User(BaseModel): 
-    username: Optional[str] = None
-    phone_number: Optional[str] = None
-    password: Optional[str] = None
+    username: str
+    balance: Optional[float] = 0.0
 
+class UserBalance(BaseModel):
+    balance: float
     
-class Login(BaseModel):
-    phone_number: str
-    password: str
+class Transactions(BaseModel):
+    id:str
+    user_id: str
+    amount: float
+    commission: float
+    status: Optional[str] = None
+    idempotency_key: Optional[str] = None
     
 
     

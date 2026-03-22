@@ -1,94 +1,128 @@
 from fastapi import HTTPException,status
 from connections.dbconn import connection
-import  lib.acl as ACL
+from connections.DML import (create_transaction, 
+                            update_success_status, 
+                            update_status, 
+                            update_balance, 
+                            get_transaction_by_id, 
+                            get_idempotency_key, 
+                            get_balance,
+                            get_history)
+import  lib.config as ACL
 from ..models import models
+import uuid
+import logging
+from decimal import Decimal
 
+logger = logging.getLogger(__name__)
 
-
-# region ADMINISTRATION
-
-async def create_admin(data: models.User):
-
-    with connection() as cur:
-        result = None
-        cur.execute("CALL lib.create_admin(%s, %s, %s, %s);",(data.username, data.phone_number, data.password ,'{}'))
-        result = cur.fetchone()[0]
-        if result['status'] == 0:
-            return result
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"{result}")
-
-async def update_admin(user_id: str, data: models.User):
+async def create_transactions(data: models.Transactions):
 
     with connection() as cur:
         result = None
-        cur.execute("CALL lib.update_admin(%s, %s, %s, %s, %s);" ,(user_id, '{}', data.username, data.phone_number, data.password))
-        result = cur.fetchone()[0]
-        if result['status'] == 0:
-            return result
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"{result}")
-
-async def delete_admin(user_id: str ):
-    result = None
-    with connection() as cur:
-        cur.execute("CALL lib.delete_admin(%s, %s);", (user_id, '{}'))
-        result = cur.fetchone()[0]
-        if result["status"] == 0:
-            return result
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"{result}")
-
-async def get_admin():
-    result = None
-    with connection() as cur:
-        cur.execute("SELECT lib.get_admins();")
-        result = cur.fetchone()[0]
+        cur.execute(create_transaction,(data.id, data.user_id, data.amount, data.commission , data.status, data.idempotency_key))
+        result = cur.fetchone()
+        if not result:
+            logger.error(f"Пользователь {data.user_id} не найден для выполнения платежа")
+            raise HTTPException(status_code=404, detail="Transaction not found")
         return result
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"{result}")
-
-async def get_admin_by_id(user_id: str):
-    result = None
-    with connection() as cur:
-        cur.execute("SELECT lib.get_admin_by_id(%s);", (user_id,))
-        result = cur.fetchone()[0]
-        return result
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"{result}")
-
-
-# endregion
-
-# region AUTHORIZATION
-
-async def login(data: models.Login):
-    result = None
-    with connection() as cur:
-        cur.execute("CALL lib.login(%s, %s, %s);" ,(data.phone_number, data.password, '{}'))
-        result = cur.fetchone()[0]
-        if result['status'] == 0:
-            result['access_token'] = ACL.generate_jwt_token(1, result['id'], data.phone_number, result['role'] )
-            result['refresh_token'] = ACL.generate_jwt_token(2, result['id'], data.phone_number, result['role'])
-            del result["phone_number"]
-            return result
-    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"{result}")
- 
-async def refresh_token(payload):
-    access_token = ACL.generate_jwt_token(1, payload["user_id"], payload["phone_number"], payload["role"])
-    refresh_token = ACL.generate_jwt_token(2, payload["user_id"], payload["phone_number"], payload["role"])
-    return {
-        'status': 1,
-        'user_id': payload["user_id"],
-        'access_token': access_token,
-        'refresh_token': refresh_token
         
-    }
+
+async def edit_balance(balance_value: float, user_id: str):
+    """
+    Обновляет баланс пользователя. 
+    balance_value: положительное число для начисления, отрицательное для списания.
+    """
+    try:
+        with connection() as cur:
+            cur.execute(update_balance, (balance_value, user_id))
+            
+            result = cur.fetchone()
+            # Фиксируем изменения в БД
+            
+            if not result:
+                logger.error(f"Пользователь {user_id} не найден для обновления баланса")
+                raise HTTPException(status_code=404, detail="User not found")
+            
+            return result
+    except Exception as e:
+        logger.error(f"Ошибка БД в edit_balance: {e}")
+        raise HTTPException(status_code=500, detail="Database update balance error")
+
+async def edit_status(tx_status: str, transaction_id: str):
+    """Обновляет статус транзакции на произвольный"""
+    try:
+        with connection() as cur:
+            # SQL: "UPDATE transactions SET status = %s WHERE id = %s RETURNING id, status"
+            cur.execute(update_status, (tx_status, transaction_id))
+            
+            result = cur.fetchone()
+            if not result:
+                raise HTTPException(status_code=404, detail="Transaction not found")
+            
+            return result
+    except Exception as e:
+        logger.error(f"Ошибка БД в edit_status: {e}")
+        raise HTTPException(status_code=500, detail="Database update status error")
+
+async def edit_success_status(transaction_id: str):
+    """Специализированная функция для перевода в Success"""
+    try:
+        with connection() as cur:
+            # SQL: "UPDATE transactions SET status = 'Success' WHERE id = %s RETURNING id, status"
+            cur.execute(update_success_status, (transaction_id,))
+            
+            result = cur.fetchone()
+            if not result:
+                raise HTTPException(status_code=404, detail="Transaction not found")
+                
+            return result
+    except Exception as e:
+        logger.error(f"Ошибка БД в edit_success_status: {e}")
+        raise HTTPException(status_code=500, detail="Database update success status error")
     
-async def logout(id: str):
+async def get_transactions_by_id(transaction_id: str):
     result = None
     with connection() as cur:
-        cur.execute("CALL lib.logout(%s, %s);", (id, '{}'))
-        result = cur.fetchone()[0]
-        if result["status"] == 0:
-            return result
+        cur.execute(get_transaction_by_id, (transaction_id,))
+        result = cur.fetchone()
+        return result
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"{result}")
-    
-# endregion
+
+async def get_payment_history():
+    with connection() as cur:
+        cur.execute(get_history)
+        rows = cur.fetchall()
+        
+        return [
+            {
+                "id": r[0], 
+                "user_id": r[1], 
+                "amount": round(float(r[2]),2), 
+                "commission": float(r[3])
+            } for r in rows
+        ]
+
+
+async def get_idempotency_key_from_tx(key: str):
+    result = None
+    with connection() as cur:
+        cur.execute(get_idempotency_key, (key,))
+        result = cur.fetchone()
+        print(result)
+        return result
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"{result}")
+
+async def get_user_balance(user_id: str):
+    result = None
+    with connection() as cur:
+        cur.execute(get_balance, (user_id,))
+        result = cur.fetchone()
+        print(result)
+        return result
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"{result}")
+
+
+
 
     

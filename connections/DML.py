@@ -1,0 +1,8 @@
+get_transaction_by_id = "SELECT amount, user_id, commission, idempotency_key FROM transactions WHERE id = %s"
+update_balance = "UPDATE users SET balance = balance - %s WHERE id = %s RETURNING id, balance;"
+update_success_status = "UPDATE transactions SET status = 'Success' WHERE id = %s RETURNING id, status;"
+update_status = "UPDATE transactions SET status = %s WHERE id = %s RETURNING id, status;"
+create_transaction = "INSERT INTO transactions (id, user_id, amount, commission, status, idempotency_key) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id, status;"
+get_idempotency_key = "SELECT  status, amount  FROM transactions WHERE idempotency_key = %s"
+get_history = "SELECT  id, user_id, amount,  commission FROM transactions"
+get_balance = "SELECT balance FROM users WHERE id = %s"
