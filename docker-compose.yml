@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # База данных Postgres
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: neondb_owner
+      POSTGRES_PASSWORD: npg_3mj0RgQwEKiV
+      POSTGRES_DB: neondb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Брокер сообщений RabbitMQ
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: always
+    ports:
+      - "5672:5672"   # Порт для кода
+      - "15672:15672" # Порт для админки (логин: guest, пароль: guest)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Твой FastAPI сервис
+  web:
+    build: .
+    # Команда запуска: указываем хост 0.0.0.0, чтобы Docker пропустил трафик
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://neondb_owner:npg_3mj0RgQwEKiV@db:5432/neondb
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - PAYMENT_URL=http://web:8000/pay
+    depends_on:
+      db:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+
+  # Твой Воркер (берет тот же образ, но запускает python worker.py)
+  worker:
+    build: .
+    command: python worker.py
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=postgresql://neondb_owner:npg_3mj0RgQwEKiV@db:5432/neondb
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - PAYMENT_URL=http://web:8000/pay
+    depends_on:
+      db:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

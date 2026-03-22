@@ -1,54 +1,60 @@
-
 import time
 import httpx
 from src.modules import payment
-import pika
+import aio_pika
 import os
 import json
 import logging
-from fastapi import HTTPException,status
+from fastapi import HTTPException, status
 import asyncio
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def get_rabbitmq_connection():
-    
-    rabbitmq_url = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
+async def get_rabbitmq_connection():
+    rabbitmq_url = os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/")
     
     try:
-        params = pika.URLParameters(rabbitmq_url)
-        return pika.BlockingConnection(params)
+
+        return await aio_pika.connect_robust(rabbitmq_url)
     except Exception as e:
-        logger.error(f"Не удалось подключиться к RabbitMQ по адресу {rabbitmq_url}: {e}")
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        logger.error(f"Не удалось подключиться к RabbitMQ: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, 
+            detail=f"RabbitMQ error: {str(e)}"
+        )
 
 async def send_to_retry_queue(transaction_data: dict):
     try:
+    
         connection = await get_rabbitmq_connection()
-        channel = connection.channel()
+        
+    
+        async with connection:
+    
+            channel = await connection.channel()
 
-        channel.queue_declare(queue='retry_queue', durable=True)
+    
+            queue = await channel.declare_queue('retry_queue', durable=True)
 
-        message = json.dumps(transaction_data)
-
-        channel.basic_publish(
-            exchange='',
-            routing_key='retry_queue',
-            body=message,
-            properties=pika.BasicProperties(
-                delivery_mode=2,  
+            message_body = json.dumps(transaction_data).encode()
+            
+            message = aio_pika.Message(
+                body=message_body,
+                delivery_mode=aio_pika.DeliveryMode.PERSISTENT, # Это аналог delivery_mode=2
                 content_type='application/json'
             )
-        )
-        
-        logger.info(f" [x] Отправлено в очередь: {message}")
-        connection.close()
+
+            # 6. Публикуем через default_exchange (аналог exchange='')
+            await channel.default_exchange.publish(
+                message,
+                routing_key='retry_queue'
+            )
+            
+            logger.info(f" [x] Отправлено в очередь: {transaction_data}")
         
     except Exception as e:
         logger.error(f"Ошибка при отправке сообщения в очередь: {e}")
-
-
 logger = logging.getLogger(__name__)
 
 class RetryService:

@@ -4,7 +4,9 @@ from src.endpoints import payment_routes as paid_v1
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 import time
-import pika
+import json
+import os
+import aio_pika
 from contextlib import asynccontextmanager
 from connections.dbconn import pg_pool, connection
 from lib.config import get_rabbitmq_connection
@@ -78,16 +80,15 @@ async def health_check():
 
 
     try:
-        
-        params = pika.ConnectionParameters(host='rabbitmq', port=5672, credentials=pika.PlainCredentials('guest', 'guest'), connection_attempts=1, retry_delay=1)
-        connection_mq = pika.BlockingConnection(params)
-        if connection_mq.is_open:
+        rabbitmq_url = os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/")
+        # Обязательно добавь таймаут, чтобы не ждать вечно
+        connection = await aio_pika.connect(rabbitmq_url, timeout=5)
+        async with connection:
             health_status["rabbitmq"] = "up"
-            connection_mq.close()
     except Exception as e:
-        health_status["status"] = "error"
         overall_healthy = False
-        print(f"HealthCheck RabbitMQ Error: {e}")
-
-    # Если что-то не так, возвращаем 503 Service Unavailable
-    return health_status if overall_healthy else Response(content=str(health_status), status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+        health_status["status"] = "error"
+        # ЭТА СТРОЧКА ВАЖНА: она покажет тип ошибки
+        health_status["rabbitmq"] = f"down: {type(e).__name__} - {str(e)}"
+    
+    return health_status
