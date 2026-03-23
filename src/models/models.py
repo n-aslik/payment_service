@@ -4,7 +4,6 @@ import uuid
 
 
 class User(BaseModel): 
-    username: str
     balance: Optional[float] = 0.0
 
 class UserBalance(BaseModel):

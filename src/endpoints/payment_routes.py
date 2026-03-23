@@ -10,6 +10,21 @@ import random
 router = APIRouter()
 retry_service = RetryService()
 
+@router.post("/create-user")
+async def create_users(data: models.User):
+    return await payment.create_users(data)
+
+@router.delete("/delete-user")
+async def delete_users(user_id: str):
+    return await payment.delete_users(user_id)
+
+@router.get("/get-users")
+async def get_all_users():
+    return await payment.get_users()
+
+@router.get("/get-metrics")
+async def get_all_metrics():
+    return await payment.get_metricks()
 
 @router.post("/create_payment")
 async def create_payment(
@@ -49,7 +64,7 @@ async def create_payment(
         raise HTTPException(status_code=500, detail="DB Error")
 
     if current_status == "Pending":
-        send_to_retry_queue(data.id)
+        await send_to_retry_queue(data.id)
         background_tasks.add_task(retry_service.process, new_id)
         return {"transaction_id": new_id, "status": "Processing"}
     
@@ -60,8 +75,8 @@ async def get_payment_history():
     return await payment.get_payment_history()
 
 @router.get("/balance")
-async def get_balance():
-    return await payment.get_user_balance()
+async def get_balance(user_id: str):
+    return await payment.get_user_balance(user_id)
 
 @router.post("/pay")
 async def mock_payment_gateway(

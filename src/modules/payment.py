@@ -6,6 +6,10 @@ from connections.DML import (create_transaction,
                             update_balance, 
                             get_transaction_by_id, 
                             get_idempotency_key, 
+                            create_user,
+                            get_metrics,
+                            delete_user,
+                            select_user,
                             get_balance,
                             get_history)
 import  lib.config as ACL
@@ -15,6 +19,44 @@ import logging
 from decimal import Decimal
 
 logger = logging.getLogger(__name__)
+
+async def create_users(data: models.User):
+
+    with connection() as cur:
+        result = None
+        cur.execute(create_user,(data.balance,))
+        result = cur.fetchone()
+        if not result:
+            logger.error(f"Пользователь {result[0]} не найден для выполнения платежа")
+            raise HTTPException(status_code=404, detail="Transaction not found")
+        return {'id':result[0], "balance": result[1]}
+    
+async def delete_users(user_id: str):
+
+    with connection() as cur:
+        result = None
+        cur.execute(delete_user,(user_id))
+        result = cur.fetchone()
+        if not result:
+            logger.error(f"Пользователь {user_id} не найден для выполнения платежа")
+            raise HTTPException(status_code=404, detail="Transaction not found")
+        return result
+    
+
+async def get_users():
+
+    with connection() as cur:
+        result = None
+        cur.execute(select_user)
+        result = cur.fetchall()
+        if not result:
+            logger.error(f"Пользователь {result[0]} не найден для выполнения платежа")
+            raise HTTPException(status_code=404, detail="Transaction not found")
+        return [{
+            "id": r[0], 
+            "balance": r[1]
+        }for r in result
+        ]
 
 async def create_transactions(data: models.Transactions):
 
@@ -92,7 +134,7 @@ async def get_transactions_by_id(transaction_id: str):
 async def get_payment_history():
     with connection() as cur:
         cur.execute(get_history)
-        rows = cur.fetchall()
+        result = cur.fetchall()
         
         return [
             {
@@ -100,7 +142,7 @@ async def get_payment_history():
                 "user_id": r[1], 
                 "amount": round(float(r[2]),2), 
                 "commission": float(r[3])
-            } for r in rows
+            } for r in result
         ]
 
 
@@ -118,8 +160,22 @@ async def get_user_balance(user_id: str):
     with connection() as cur:
         cur.execute(get_balance, (user_id,))
         result = cur.fetchone()
-        print(result)
-        return result
+        return {"balance":result[0]}
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"{result}")
+
+async def get_metricks():
+    result = None
+    with connection() as cur:
+        cur.execute(get_metrics)
+        result = cur.fetchall()
+        return [
+            {
+                "success_count": r[0], 
+                "failed_count": r[1], 
+            } for r in result
+        ]
+
+    
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail = f"{result}")
 
 

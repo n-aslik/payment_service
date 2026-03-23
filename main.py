@@ -1,15 +1,14 @@
-from fastapi import FastAPI, Request, status
-from fastapi.responses import Response
+from fastapi import FastAPI, Request
 from src.endpoints import payment_routes as paid_v1
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 import time
-import json
 import os
 import aio_pika
 from contextlib import asynccontextmanager
 from connections.dbconn import pg_pool, connection
-from lib.config import get_rabbitmq_connection
+
+
 
 @asynccontextmanager
 async def lifespan (app: FastAPI):
@@ -81,14 +80,14 @@ async def health_check():
 
     try:
         rabbitmq_url = os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672/")
-        # Обязательно добавь таймаут, чтобы не ждать вечно
-        connection = await aio_pika.connect(rabbitmq_url, timeout=5)
-        async with connection:
+
+        conn = await aio_pika.connect(rabbitmq_url, timeout=5)
+        async with conn:
             health_status["rabbitmq"] = "up"
     except Exception as e:
         overall_healthy = False
         health_status["status"] = "error"
-        # ЭТА СТРОЧКА ВАЖНА: она покажет тип ошибки
+    
         health_status["rabbitmq"] = f"down: {type(e).__name__} - {str(e)}"
     
     return health_status

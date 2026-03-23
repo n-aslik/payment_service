@@ -2,17 +2,20 @@ version: '3.8'
 
 services:
   # База данных Postgres
+
   db:
     image: postgres:16
+    container_name: postgres_db
     restart: always
     environment:
-      POSTGRES_USER: neondb_owner
-      POSTGRES_PASSWORD: npg_3mj0RgQwEKiV
-      POSTGRES_DB: neondb
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: aasl8998
+      POSTGRES_DB: firstdb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d firstdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # Брокер сообщений RabbitMQ
   rabbitmq:
@@ -37,30 +40,18 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://neondb_owner:npg_3mj0RgQwEKiV@db:5432/neondb
+      - DATABASE=firstdb
+      - USER=postgres
+      - PASSWORD=aasl8998
+      - HOST=db
+      - PORT=5432
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
       - PAYMENT_URL=http://web:8000/pay
     depends_on:
       db:
-        condition: service_started
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
 
-  # Твой Воркер (берет тот же образ, но запускает python worker.py)
-  worker:
-    build: .
-    command: python worker.py
-    volumes:
-      - .:/app
-    environment:
-      - DATABASE_URL=postgresql://neondb_owner:npg_3mj0RgQwEKiV@db:5432/neondb
-      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
-      - PAYMENT_URL=http://web:8000/pay
-    depends_on:
-      db:
-        condition: service_started
-      rabbitmq:
-        condition: service_healthy
 
-volumes:
-  postgres_data:
+  
