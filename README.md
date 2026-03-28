@@ -6,6 +6,25 @@
 `docker-compose up --build`
 ---------------------------
 После запуска сервис будет доступен по адресу http://localhost:8000. 
+Также для создание схемы и таблиц Users и Transactions нужно запустить слудующую команду:
+-----------------------------------------------------------------------------------
+`docker exec -it postgres_db psql -U postgres -d firstdb -c "CREATE SCHEMA IF NOT EXISTS payment; CREATE TABLE IF NOT EXISTS payment.users
+(
+    id uuid NOT NULL PRIMARY KEY  DEFAULT gen_random_uuid(),
+    balance numeric
+);
+CREATE TABLE IF NOT EXISTS payment.transactions
+(
+    id uuid NOT NULL DEFAULT gen_random_uuid(),
+    user_id uuid REFERENCES payment.users (id) ,
+    amount numeric,
+    commission numeric,
+    status character varying,
+    idempotency_key uuid
+)
+"
+`
+------------------------------------------------------------------------------------
 Все настройки осуществляются через переменные окружения в файле .env.🛠 
 ### 🛠 **Технологический стек**
 - Язык: Python (рекомендуется использование асинхронных фреймворков для отзывчивости).

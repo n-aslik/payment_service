@@ -60,7 +60,7 @@ async def send_to_retry_queue(transaction_data: dict):
 logger = logging.getLogger(__name__)
 class RetryService:
     def __init__(self):
-        # URL должен указывать на ваш сервис 'web' внутри Docker сети
+    
         self.PAYMENT_URL = os.getenv("PAYMENT_URL", "http://web:8000/pay")
 
     async def process(self, tx_id: str):
