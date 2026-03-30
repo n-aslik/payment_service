@@ -35,7 +35,7 @@ async def delete_users(user_id: str):
 
     with connection() as cur:
         result = None
-        cur.execute(delete_user,(user_id))
+        cur.execute(delete_user,(user_id,))
         result = cur.fetchone()
         if not result:
             logger.error(f"Пользователь {user_id} не найден для выполнения платежа")

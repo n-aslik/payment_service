@@ -10,4 +10,4 @@ get_metrics = "SELECT COUNT(status)FILTER(WHERE status = 'Success')as success_co
 
 create_user = "INSERT INTO payment.users (balance) VALUES (%s) RETURNING id, balance"
 select_user = "SELECT * FROM payment.users"
-delete_user = "DELETE FROM payment.users WHERE id= %s"
+delete_user = "DELETE FROM payment.users WHERE id= %s RETURNING *"
