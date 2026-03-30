@@ -40,7 +40,7 @@ async def delete_users(user_id: str):
         if not result:
             logger.error(f"Пользователь {user_id} не найден для выполнения платежа")
             raise HTTPException(status_code=404, detail="Transaction not found")
-        return result
+        return {"id": result[0]}
     
 
 async def get_users():
