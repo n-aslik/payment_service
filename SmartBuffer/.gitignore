@@ -5,4 +5,5 @@ venv/
 pyvenv.cfg
 __pycache__
 *.db
+payment_service/
 
