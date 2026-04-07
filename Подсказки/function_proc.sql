@@ -1,0 +1,96 @@
+-- CREATE PROCEDURE booksblog.update_user(
+-- username character varying,
+-- password character varying,
+-- id integer
+-- )
+-- LANGUAGE plpgsql
+-- AS $$ BEGIN
+-- UPDATE booksblog.users as u SET u.username=username, u.password=password WHERE u.id=id;
+-- END;
+-- $$;
+
+-- CREATE PROCEDURE booksblog.locked_user(
+-- lock_user boolean,
+-- id integer
+-- )
+-- LANGUAGE plpgsql
+-- AS $$ BEGIN
+-- UPDATE booksblog.users as u SET u.isblocked=lock_user WHERE u.id=id;
+-- END;
+-- $$;
+
+-- CREATE PROCEDURE booksblog.update_book(
+-- title character varying,
+-- description character varying,
+-- comment character varying,
+-- janr character varying
+-- )
+-- LANGUAGE plpgsql
+-- AS $$ BEGIN
+-- UPDATE booksblog.books as b SET b.title=title, b.description=description,b.comment=comment,b.janr=janr WHERE b.id=id;
+-- END;
+-- $$;
+
+-- CREATE PROCEDURE booksblog.delete_book(
+-- id integer
+-- )
+-- LANGUAGE plpgsql
+-- AS $$ BEGIN
+-- DELETE from booksblog.books WHERE u.id=id;
+-- END;
+-- $$;
+
+-- CREATE PROCEDURE booksblog.response_book(
+-- isresponse boolean,
+-- id integer
+-- )
+-- LANGUAGE plpgsql
+-- AS $$ BEGIN
+-- UPDATE booksblog.books as u SET u.isbresponse=isresponse WHERE u.id=id;
+-- END;
+-- $$;
+
+-- CREATE PROCEDURE booksblog.public_book(
+-- ispublic boolean,
+-- id integer
+-- )
+-- LANGUAGE plpgsql
+-- AS $$ BEGIN
+-- UPDATE booksblog.books as u SET u.ispublished=ispublic WHERE u.id=id;
+-- END;
+-- $$;
+
+--create function(procedure)
+-- CREATE OR REPLACE FUNCTION booksblog.create_user(
+-- 	username character varying,
+-- 	password character varying,
+-- 	role character varying
+-- 	)
+-- RETURNS VOID
+-- AS $$
+-- BEGIN
+-- INSERT into booksblog.books as b(b.username,b.password,b.role)VALUES(username,password,role);
+-- END;
+-- $$
+-- LANGUAGE plpgsql;
+
+--get function
+-- CREATE OR REPLACE FUNCTION get_users_json()
+-- RETURNS JSON AS $$
+-- BEGIN
+--     RETURN (
+--         SELECT json_agg(row_to_json(t))
+--         FROM (
+--             SELECT id, name, email FROM users
+--         ) t
+--     );
+-- END;
+-- $$ LANGUAGE plpgsql;
+
+--procedure
+-- CREATE OR REPLACE PROCEDURE func_name(data,datatype)
+-- LANGUAGE plpgsql
+-- AS $$ BEGIN
+-- SQL_query
+-- END;
+-- $$;

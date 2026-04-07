@@ -1,0 +1,202 @@
+
+pyinstaller --onefile --windowed --icon=путь/к/вашей/иконке.ico ваш_скрипт.
+==================================================================================================
+Основные команды GitHub (Git):
+Начало работы:
+Первые шаги, первый push
+git init — Инициализация репозитория
+
+git config — Настройки параметров конфигурации Git.
+
+git status — Состояние рабочего каталога и индекса.
+
+git add — Добавление изменений в индекс.
+
+git reset — Отмена изменений в репозитории.
+
+git commit — Сохранение изменений в локальном репозитории Git.
+
+git log — Просмотр истории коммитов
+
+git push — Отправка коммитов в удаленный репозиторий
+
+Вторые шаги
+git branch — Управление ветками
+
+git switch — Переключение между ветками
+
+git clone — Создание копии удаленного репозитория
+
+git stash — Временное хранилище
+
+git config alias — Создание псевдонимов
+
+git checkout — Работа с ветками, восстановление файлов и переключение на конкретные коммиты
+
+git merge — Слияние изменений веток
+
+git fetch — Загрузка обновлений из удаленного репозитория
+
+git pull — Извлечение и слияние изменений
+
+Работа с текстовым редактором
+
+git rebase — Ашалеть, что это за ЗВЕРЬ?
+
+git diff — Просмотр различий между файлами
+
+Менее юзаемые команды
+git difftool — Просмотр различий и редактирование файлов
+
+git remote — Работа с удалёнными репозиториями
+
+git tag — Теги
+
+git restore — Восстановления файлов из индекса или коммитов
+
+git cherry-pick — Применение коммитов из одной ветки на другую
+
+git revert — Откат изменений
+
+Для настройки имени и email используется: git config --global user.name "Name" и git config --global user.email "email@example.com". 
+=====================================================================================================
+основные команды docker:
+
+-- Команды для управления контейнерами --
+
+- docker run - Создает и запускает контейнер из образа.
+
+- docker start - Запускает остановленный контейнер. 
+
+- docker stop - Останавливает работающий контейнер.
+
+- docker restart - Перезапускает контейнер. 
+
+- docker rm - Удаляет один или несколько контейнеров, которые уже остановлены.
+
+- docker ps (-a) - Отображение списка только работающих контейнеров (Отображение списка всех (включая остановленные))
+
+-- Команды для управления образами --
+
+- docker pull - Загружает образы из удаленного репозитория Docker Hub. 
+
+- docker build - Нужна для сборки пользовательского образа Docker на основе Dockerfile.
+
+- docker push - Загружает пользовательск ий образ в Docker Hub или другие хранилища образов.  
+
+- docker rmi - Удаляет образы с локального хоста.
+
+- docker images - Выводит список образов, которые находятся на вашем локальном хосте.
+
+-- Команды для управления хранилищами данных --
+
+- docker  volume create - Создает новый том Docker. 
+
+- docker run -v
+
+- docker volume rm
+
+- docker volume ls
+
+ -- Команды Docker Compose --
+
+Docker Compose работает поверх Docker и позволяет управлять множеством контейнеров в рамках одного проекта.
+
+- docker-compose up — запускает приложение со всеми контейнеры, информация о которых есть в docker-compose.yml. Если файл не указан, по умолчанию используется файл в текущем каталоге
+
+- docker-compose down — останавливает и удаляет все контейнеры, а также тома, связанные с ними;
+
+- docker-compose start — запускает остановленные контейнеры;
+
+- docker-compose stop — останавливает работу запущенных контейнеров без их удаления;
+
+- docker-compose restart — перезапускает контейнеры;
+
+- docker-compose build — позволяет обновить образы или создать их заново, если они были изменены;
+
+- docker-compose logs — выводит журналы состояния;
+
+- docker-compose ps — отображает текущее состояние контейнеров;
+
+- docker-compose pull — загружает последние версии образов для сервисов, описанных в файле docker-compose.yml.   
+
+docker exec -it postgres_db psql -U postgres -d firstdb -c "CREATE SCHEMA IF NOT EXISTS payment; CREATE TABLE IF NOT EXISTS payment.users
+(
+    id uuid NOT NULL PRIMARY KEY  DEFAULT gen_random_uuid(),
+    balance numeric
+);
+CREATE TABLE IF NOT EXISTS payment.transactions
+(
+    id uuid NOT NULL DEFAULT gen_random_uuid(),
+    user_id uuid REFERENCES payment.users (id) ,
+    amount numeric,
+    commission numeric,
+    status character varying,
+    idempotency_key uuid
+)
+"
+
+
+FROM python:3.10-slim
+RUN apt-get update && apt-get install -y libpq-dev gcc
+WORKDIR /payment_services
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: neondb_owner
+      POSTGRES_PASSWORD: npg_3mj0RgQwEKiV
+      POSTGRES_DB: neondb
+    ports:
+      - "5432:5432"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: always
+    ports:
+      - "5672:5672"   
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://neondb_owner:npg_3mj0RgQwEKiV@db:5432/neondb
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      db:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+
+  worker:
+    build: .
+    command: python worker.py
+    volumes:
+      - .:/app
+    environment:
+      - DATABASE_URL=postgresql://neondb_owner:npg_3mj0RgQwEKiV@db:5432/neondb
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      db:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
