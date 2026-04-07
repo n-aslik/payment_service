@@ -1,0 +1,5 @@
+*.vscode
+.idea
+DDL_DML.py
+venv
+pyvenv.cfg
