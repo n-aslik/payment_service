@@ -1,5 +1,8 @@
 *.vscode
 .idea
 DDL_DML.py
-venv
+venv/
 pyvenv.cfg
+__pycache__
+*.db
+

@@ -1,0 +1,13 @@
+get_transaction_by_id = "SELECT amount, user_id, commission, idempotency_key FROM payment.transactions WHERE id = %s"
+update_balance = "UPDATE payment.users SET balance = balance - %s WHERE id = %s RETURNING id, balance;"
+update_success_status = "UPDATE payment.transactions SET status = 'Success' WHERE id = %s RETURNING id, status;"
+update_status = "UPDATE payment.transactions SET status = %s WHERE id = %s RETURNING id, status;"
+create_transaction = "INSERT INTO payment.transactions (id, user_id, amount, commission, status, idempotency_key) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id, status;"
+get_idempotency_key = "SELECT  status, amount  FROM payment.transactions WHERE idempotency_key = %s"
+get_history = "SELECT  id, user_id, amount, commission FROM payment.transactions"
+get_balance = "SELECT balance FROM payment.users WHERE id = %s"
+get_metrics = "SELECT COUNT(status)FILTER(WHERE status = 'Success')as success_count,  COUNT(status)FILTER(WHERE status = 'Failed')as failed_count FROM payment.transactions"
+
+create_user = "INSERT INTO payment.users (balance) VALUES (%s) RETURNING id, balance"
+select_user = "SELECT * FROM payment.users"
+delete_user = "DELETE FROM payment.users WHERE id= %s RETURNING id"
